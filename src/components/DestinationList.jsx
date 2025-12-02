@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import './DestinationList.css';
 
-function DestinationList({ destinations, onRemove, onPlanRoute, onClearAll }) {
+function DestinationList({ destinations, onRemove, onPlanRoute, onClearAll, onReorder, hasRoute }) {
+  const [draggedIndex, setDraggedIndex] = useState(null);
   return (
     <div className="destination-list">
       <h3 className="list-title">我的行程</h3>
@@ -14,7 +16,28 @@ function DestinationList({ destinations, onRemove, onPlanRoute, onClearAll }) {
           <div className="destinations-wrapper">
             <ul className="destinations">
               {destinations.map((dest, index) => (
-                <li key={dest.id} className="destination-item">
+                <li 
+                  key={dest.id} 
+                  className={`destination-item ${draggedIndex === index ? 'dragging' : ''}`}
+                  draggable
+                  onDragStart={() => setDraggedIndex(index)}
+                  onDragEnd={() => setDraggedIndex(null)}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.add('drag-over');
+                  }}
+                  onDragLeave={(e) => {
+                    e.currentTarget.classList.remove('drag-over');
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove('drag-over');
+                    if (draggedIndex !== null && draggedIndex !== index) {
+                      onReorder(draggedIndex, index);
+                    }
+                  }}
+                >
+                  <div className="drag-handle" title="拖动排序">☰</div>
                   <div className="destination-number">{index + 1}</div>
                   <div className="destination-info">
                     <div className="destination-name">{dest.name}</div>
@@ -37,7 +60,7 @@ function DestinationList({ destinations, onRemove, onPlanRoute, onClearAll }) {
                 className="plan-route-button"
                 onClick={onPlanRoute}
               >
-                规划路线
+                {hasRoute ? '重新规划' : '规划路线'}
               </button>
             )}
             <button

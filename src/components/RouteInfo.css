@@ -1,5 +1,5 @@
 .route-info {
-  margin-top: 15px;
+  margin-top: 10px;
   border: 1px solid #ddd;
   border-radius: 4px;
   background: white;
@@ -8,27 +8,27 @@
 }
 
 .route-info-header {
-  padding: 12px 15px;
+  padding: 10px 15px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-bottom: 1px solid #ddd;
 }
 
 .route-info-header h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: white;
 }
 
 .route-info-content {
-  padding: 15px;
+  padding: 12px 15px;
 }
 
 .info-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 0;
+  padding: 8px 0;
   border-bottom: 1px solid #f0f0f0;
 }
 

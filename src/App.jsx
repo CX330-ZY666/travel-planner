@@ -9,6 +9,7 @@ function App() {
   const [map, setMap] = useState(null);
   const [destinations, setDestinations] = useState([]);
   const [routeInfo, setRouteInfo] = useState(null);
+  const [routeNeedsUpdate, setRouteNeedsUpdate] = useState(false);
   const markersRef = useRef([]);
   const routePolylineRef = useRef(null);
 
@@ -59,6 +60,14 @@ function App() {
       // 移动地图中心到新添加的目的地
       map.setCenter([destination.location.lng, destination.location.lat]);
     }
+
+    // 如果已规划过路线，清除路线并提示
+    if (routePolylineRef.current) {
+      map.remove(routePolylineRef.current);
+      routePolylineRef.current = null;
+      setRouteInfo(null);
+      setRouteNeedsUpdate(true);
+    }
   };
 
   // 删除目的地
@@ -82,6 +91,14 @@ function App() {
         direction: 'top',
       });
     });
+
+    // 如果已规划过路线，清除路线并提示
+    if (routePolylineRef.current) {
+      map.remove(routePolylineRef.current);
+      routePolylineRef.current = null;
+      setRouteInfo(null);
+      setRouteNeedsUpdate(true);
+    }
   };
 
   // 清空所有行程
@@ -108,6 +125,120 @@ function App() {
     // 清空状态
     setDestinations([]);
     setRouteInfo(null);
+    setRouteNeedsUpdate(false);
+  };
+
+  // 重新排序目的地
+  const handleReorder = (fromIndex, toIndex) => {
+    const newDestinations = [...destinations];
+    const [movedItem] = newDestinations.splice(fromIndex, 1);
+    newDestinations.splice(toIndex, 0, movedItem);
+
+    // 更新目的地列表
+    setDestinations(newDestinations);
+
+    // 更新地图标记
+    if (map) {
+      // 移除所有旧标记
+      if (markersRef.current.length > 0) {
+        map.remove(markersRef.current);
+        markersRef.current = [];
+      }
+
+      // 重新添加所有标记
+      newDestinations.forEach((dest, index) => {
+        const marker = new AMap.Marker({
+          position: [dest.location.lng, dest.location.lat],
+          title: dest.name,
+          label: {
+            content: `${index + 1}`,
+            direction: 'top',
+          },
+        });
+        map.add(marker);
+        markersRef.current.push(marker);
+      });
+    }
+
+    // 如果已经规划过路线，清除路线并提示重新规划
+    if (routePolylineRef.current) {
+      map.remove(routePolylineRef.current);
+      routePolylineRef.current = null;
+      setRouteInfo(null);
+      setRouteNeedsUpdate(true);
+      alert('顺序已调整，请重新规划路线');
+    }
+  };
+
+  // 使用当前位置作为起点
+  const handleUseCurrentLocation = () => {
+    if (!map) {
+      alert('地图未加载完成，请稍后再试');
+      return;
+    }
+
+    // 使用高德定位插件
+    AMap.plugin('AMap.Geolocation', () => {
+      const geolocation = new AMap.Geolocation({
+        enableHighAccuracy: true,
+        timeout: 10000,
+      });
+
+      geolocation.getCurrentPosition((status, result) => {
+        if (status === 'complete') {
+          const { lng, lat } = result.position;
+          const address = result.formattedAddress || '当前位置';
+
+          const currentLocation = {
+            id: 'current_location_' + Date.now(),
+            name: '当前位置',
+            address: address,
+            location: { lng, lat },
+          };
+
+          // 如果已有目的地，插入到开头；否则直接添加
+          const newDestinations = [currentLocation, ...destinations];
+          
+          // 移除所有旧标记
+          if (markersRef.current.length > 0) {
+            map.remove(markersRef.current);
+            markersRef.current = [];
+          }
+
+          // 重新添加所有标记
+          newDestinations.forEach((dest, index) => {
+            const marker = new AMap.Marker({
+              position: [dest.location.lng, dest.location.lat],
+              title: dest.name,
+              label: {
+                content: `${index + 1}`,
+                direction: 'top',
+              },
+            });
+            map.add(marker);
+            markersRef.current.push(marker);
+          });
+
+          setDestinations(newDestinations);
+          
+          // 移动地图中心到当前位置
+          map.setCenter([lng, lat]);
+          
+          // 如果已规划过路线，清除路线
+          if (routePolylineRef.current) {
+            map.remove(routePolylineRef.current);
+            routePolylineRef.current = null;
+            setRouteInfo(null);
+            setRouteNeedsUpdate(true);
+          }
+          
+          alert('已将当前位置设为起点');
+        } else {
+          console.error('定位失败', result);
+          alert('定位失败，请检查是否允许浏览器获取位置信息');
+        }
+      });
+    });
   };
 
   // 规划路线
@@ -127,6 +258,9 @@ function App() {
       map.remove(routePolylineRef.current);
       routePolylineRef.current = null;
     }
+
+    // 开始规划，清除提示状态
+    setRouteNeedsUpdate(false);
 
     // 加载 Driving 插件
     AMap.plugin('AMap.Driving', () => {
@@ -208,7 +342,11 @@ function App() {
         </div>
         <div className="sidebar-content">
           <div className="search-section">
-            <SearchBar map={map} onAddDestination={handleAddDestination} />
+            <SearchBar 
+              map={map} 
+              onAddDestination={handleAddDestination}
+              onUseCurrentLocation={handleUseCurrentLocation}
+            />
           </div>
           <div className="itinerary-section">
             <DestinationList 
@@ -216,7 +354,14 @@ function App() {
               onRemove={handleRemoveDestination}
               onPlanRoute={handlePlanRoute}
               onClearAll={handleClearAll}
+              onReorder={handleReorder}
+              hasRoute={!!routePolylineRef.current}
             />
+            {routeNeedsUpdate && destinations.length >= 2 && (
+              <div className="route-update-tip">
+                ⚠️ 行程已更新，请重新规划路线
+              </div>
+            )}
             <RouteInfo routeInfo={routeInfo} />
           </div>
         </div>

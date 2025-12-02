@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import './SearchBar.css';
 
-function SearchBar({ map, onAddDestination }) {
+function SearchBar({ map, onAddDestination, onUseCurrentLocation }) {
   const [keyword, setKeyword] = useState('');
   const [results, setResults] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
@@ -162,6 +162,15 @@ function SearchBar({ map, onAddDestination }) {
           {loading ? '搜索中...' : '搜索'}
         </button>
       </div>
+
+      {/* 快捷定位按钮 */}
+      <button 
+        className="location-button"
+        onClick={onUseCurrentLocation}
+        title="使用当前位置作为起点"
+      >
+        📍 使用当前位置
+      </button>
 
       {/* 自动提示列表 */}
       {showSuggestions && suggestions.length > 0 && (

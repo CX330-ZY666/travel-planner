@@ -41,10 +41,10 @@ body, html, #root {
 
 .sidebar-content {
   flex: 1;
-  padding: 20px;
+  padding: 15px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 15px;
   overflow: hidden;
 }
 
@@ -64,4 +64,28 @@ body, html, #root {
   flex: 1;
   height: 100%;
   position: relative;
+}
+
+.route-update-tip {
+  margin: 10px 0;
+  padding: 10px 15px;
+  background: #fffbe6;
+  border: 1px solid #ffe58f;
+  border-radius: 4px;
+  color: #faad14;
+  font-size: 13px;
+  text-align: center;
+  animation: slideIn 0.3s ease-out;
+  flex-shrink: 0;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
