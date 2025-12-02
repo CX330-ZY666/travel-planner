@@ -12,5 +12,41 @@ body, html, #root {
 .app {
   width: 100%;
   height: 100vh;
+  display: flex;
+  position: relative;
+}
+
+.sidebar {
+  width: 400px;
+  height: 100%;
+  background: #fff;
+  border-right: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+}
+
+.sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid #ddd;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.sidebar-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: white;
+}
+
+.sidebar-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.map-wrapper {
+  flex: 1;
+  height: 100%;
   position: relative;
 }
