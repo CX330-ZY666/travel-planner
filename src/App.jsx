@@ -2,12 +2,15 @@ import { useState, useRef } from 'react';
 import MapContainer from './components/MapContainer';
 import SearchBar from './components/SearchBar';
 import DestinationList from './components/DestinationList';
+import RouteInfo from './components/RouteInfo';
 import './App.css';
 
 function App() {
   const [map, setMap] = useState(null);
   const [destinations, setDestinations] = useState([]);
+  const [routeInfo, setRouteInfo] = useState(null);
   const markersRef = useRef([]);
+  const routePolylineRef = useRef(null);
 
   const handleMapReady = (mapInstance) => {
     setMap(mapInstance);
@@ -81,9 +84,94 @@ function App() {
     });
   };
 
-  // 规划路线（后续实现）
+  // 规划路线
   const handlePlanRoute = () => {
-    alert('路线规划功能将在下一阶段实现');
+    if (destinations.length < 2) {
+      alert('至少需要2个目的地才能规划路线');
+      return;
+    }
+
+    if (!map) {
+      alert('地图未加载完成，请稍后再试');
+      return;
+    }
+
+    // 清除之前的路线
+    if (routePolylineRef.current) {
+      map.remove(routePolylineRef.current);
+      routePolylineRef.current = null;
+    }
+
+    // 加载 Driving 插件
+    AMap.plugin('AMap.Driving', () => {
+      const driving = new AMap.Driving({
+        policy: AMap.DrivingPolicy.LEAST_TIME, // 最短时间
+        map: map,
+        hideMarkers: true, // 隐藏默认标记，使用我们自己的标记
+      });
+
+      // 提取起点和终点
+      const origin = destinations[0].location;
+      const destination = destinations[destinations.length - 1].location;
+
+      // 提取途经点（如果有）
+      const waypoints = destinations.slice(1, -1).map(d => (
+        new AMap.LngLat(d.location.lng, d.location.lat)
+      ));
+
+      // 开始规划路线
+      const searchParams = [
+        new AMap.LngLat(origin.lng, origin.lat),
+        new AMap.LngLat(destination.lng, destination.lat)
+      ];
+
+      if (waypoints.length > 0) {
+        searchParams.push({ waypoints });
+      }
+
+      driving.search(
+        searchParams[0],
+        searchParams[1],
+        waypoints.length > 0 ? { waypoints } : {},
+        (status, result) => {
+          if (status === 'complete') {
+            console.log('路线规划成功', result);
+            
+            // 计算总距离和总时间
+            let totalDistance = 0;
+            let totalDuration = 0;
+            
+            result.routes[0].steps.forEach(step => {
+              totalDistance += step.distance;
+              totalDuration += step.time;
+            });
+
+            setRouteInfo({
+              distance: totalDistance,
+              duration: totalDuration,
+            });
+
+            // 保存路线引用
+            if (result.routes[0] && result.routes[0].path) {
+              const polyline = new AMap.Polyline({
+                path: result.routes[0].path,
+                strokeColor: '#1890ff',
+                strokeWeight: 6,
+                strokeOpacity: 0.8,
+              });
+              map.add(polyline);
+              routePolylineRef.current = polyline;
+
+              // 调整地图视野以显示整条路线
+              map.setFitView();
+            }
+          } else {
+            console.error('路线规划失败', result);
+            alert('路线规划失败，请检查目的地是否可达');
+          }
+        }
+      );
+    });
   };
 
   return (
@@ -99,6 +187,7 @@ function App() {
             onRemove={handleRemoveDestination}
             onPlanRoute={handlePlanRoute}
           />
+          <RouteInfo routeInfo={routeInfo} />
         </div>
       </div>
       <div className="map-wrapper">
