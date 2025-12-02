@@ -84,6 +84,32 @@ function App() {
     });
   };
 
+  // 清空所有行程
+  const handleClearAll = () => {
+    if (destinations.length === 0) return;
+
+    // 确认操作
+    if (!window.confirm('确定要清空所有行程吗？')) {
+      return;
+    }
+
+    // 移除所有地图标记
+    if (map && markersRef.current.length > 0) {
+      map.remove(markersRef.current);
+      markersRef.current = [];
+    }
+
+    // 清除路线
+    if (routePolylineRef.current) {
+      map.remove(routePolylineRef.current);
+      routePolylineRef.current = null;
+    }
+
+    // 清空状态
+    setDestinations([]);
+    setRouteInfo(null);
+  };
+
   // 规划路线
   const handlePlanRoute = () => {
     if (destinations.length < 2) {
@@ -181,13 +207,18 @@ function App() {
           <h2>智能旅游路线规划</h2>
         </div>
         <div className="sidebar-content">
-          <SearchBar map={map} onAddDestination={handleAddDestination} />
-          <DestinationList 
-            destinations={destinations}
-            onRemove={handleRemoveDestination}
-            onPlanRoute={handlePlanRoute}
-          />
-          <RouteInfo routeInfo={routeInfo} />
+          <div className="search-section">
+            <SearchBar map={map} onAddDestination={handleAddDestination} />
+          </div>
+          <div className="itinerary-section">
+            <DestinationList 
+              destinations={destinations}
+              onRemove={handleRemoveDestination}
+              onPlanRoute={handlePlanRoute}
+              onClearAll={handleClearAll}
+            />
+            <RouteInfo routeInfo={routeInfo} />
+          </div>
         </div>
       </div>
       <div className="map-wrapper">

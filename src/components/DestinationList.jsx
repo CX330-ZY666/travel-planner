@@ -1,6 +1,6 @@
 import './DestinationList.css';
 
-function DestinationList({ destinations, onRemove, onPlanRoute }) {
+function DestinationList({ destinations, onRemove, onPlanRoute, onClearAll }) {
   return (
     <div className="destination-list">
       <h3 className="list-title">我的行程</h3>
@@ -11,32 +11,42 @@ function DestinationList({ destinations, onRemove, onPlanRoute }) {
         </div>
       ) : (
         <>
-          <ul className="destinations">
-            {destinations.map((dest, index) => (
-              <li key={dest.id} className="destination-item">
-                <div className="destination-number">{index + 1}</div>
-                <div className="destination-info">
-                  <div className="destination-name">{dest.name}</div>
-                  <div className="destination-address">{dest.address}</div>
-                </div>
-                <button
-                  className="remove-button"
-                  onClick={() => onRemove(dest.id)}
-                >
-                  删除
-                </button>
-              </li>
-            ))}
-          </ul>
+          <div className="destinations-wrapper">
+            <ul className="destinations">
+              {destinations.map((dest, index) => (
+                <li key={dest.id} className="destination-item">
+                  <div className="destination-number">{index + 1}</div>
+                  <div className="destination-info">
+                    <div className="destination-name">{dest.name}</div>
+                    <div className="destination-address">{dest.address}</div>
+                  </div>
+                  <button
+                    className="remove-button"
+                    onClick={() => onRemove(dest.id)}
+                  >
+                    删除
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
           
-          {destinations.length >= 2 && (
+          <div className="action-buttons">
+            {destinations.length >= 2 && (
+              <button
+                className="plan-route-button"
+                onClick={onPlanRoute}
+              >
+                规划路线
+              </button>
+            )}
             <button
-              className="plan-route-button"
-              onClick={onPlanRoute}
+              className="clear-all-button"
+              onClick={onClearAll}
             >
-              规划路线
+              清空行程
             </button>
-          )}
+          </div>
         </>
       )}
     </div>

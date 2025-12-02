@@ -1,9 +1,10 @@
 .route-info {
-  margin-top: 20px;
+  margin-top: 15px;
   border: 1px solid #ddd;
   border-radius: 4px;
   background: white;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .route-info-header {
