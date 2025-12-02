@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import MapContainer from './components/MapContainer';
 import SearchBar from './components/SearchBar';
 import DestinationList from './components/DestinationList';
@@ -10,8 +10,90 @@ function App() {
   const [destinations, setDestinations] = useState([]);
   const [routeInfo, setRouteInfo] = useState(null);
   const [routeNeedsUpdate, setRouteNeedsUpdate] = useState(false);
+  const [saveStatus, setSaveStatus] = useState('');
+  const [routePolicy, setRoutePolicy] = useState('LEAST_TIME'); // 路线策略
+  const [isAnimating, setIsAnimating] = useState(false); // 动画状态
+  const [hasRoute, setHasRoute] = useState(false); // 是否已规划路线
   const markersRef = useRef([]);
   const routePolylineRef = useRef(null);
+  const animationMarkerRef = useRef(null); // 动画小车
+  const [isRestoringData, setIsRestoringData] = useState(true);
+  const saveTimeoutRef = useRef(null);
+  const routePathRef = useRef(null); // 保存路线路径
+
+  // 初始化时从 localStorage 恢复数据
+  useEffect(() => {
+    try {
+      const savedDestinations = localStorage.getItem('travel_planner_destinations');
+      if (savedDestinations) {
+        const parsed = JSON.parse(savedDestinations);
+        setDestinations(parsed);
+        console.log('已恢复保存的行程', parsed);
+      }
+    } catch (error) {
+      console.error('恢复行程失败', error);
+    } finally {
+      setIsRestoringData(false);
+    }
+  }, []);
+
+  // 当 destinations 变化时自动保存
+  useEffect(() => {
+    if (!isRestoringData) {
+      try {
+        localStorage.setItem('travel_planner_destinations', JSON.stringify(destinations));
+        console.log('行程已自动保存');
+        
+        // 显示保存提示
+        setSaveStatus('✔️ 已保存');
+        
+        // 清除之前的定时器
+        if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+        }
+        
+        // 2秒后隐藏提示
+        saveTimeoutRef.current = setTimeout(() => {
+          setSaveStatus('');
+        }, 2000);
+      } catch (error) {
+        console.error('保存行程失败', error);
+        setSaveStatus('❌ 保存失败');
+      }
+    }
+  }, [destinations, isRestoringData]);
+
+  // 地图加载完成后恢复标记
+  useEffect(() => {
+    if (map && destinations.length > 0 && markersRef.current.length === 0) {
+      destinations.forEach((dest, index) => {
+        const marker = new AMap.Marker({
+          position: [dest.location.lng, dest.location.lat],
+          title: dest.name,
+          label: {
+            content: `${index + 1}`,
+            direction: 'top',
+          },
+        });
+        map.add(marker);
+        markersRef.current.push(marker);
+      });
+      
+      // 调整地图视野以显示所有标记
+      if (destinations.length > 0) {
+        map.setFitView();
+      }
+      
+      console.log('已恢复地图标记');
+    }
+  }, [map, destinations]);
+
+  // 当路线策略变化时，如果已有路线则自动重新规划
+  useEffect(() => {
+    if (routePolylineRef.current && !isRestoringData) {
+      handlePlanRoute();
+    }
+  }, [routePolicy]);
 
   const handleMapReady = (mapInstance) => {
     setMap(mapInstance);
@@ -67,6 +149,7 @@ function App() {
       routePolylineRef.current = null;
       setRouteInfo(null);
       setRouteNeedsUpdate(true);
+      setHasRoute(false);
     }
   };
 
@@ -98,6 +181,7 @@ function App() {
       routePolylineRef.current = null;
       setRouteInfo(null);
       setRouteNeedsUpdate(true);
+      setHasRoute(false);
     }
   };
 
@@ -126,6 +210,7 @@ function App() {
     setDestinations([]);
     setRouteInfo(null);
     setRouteNeedsUpdate(false);
+    setHasRoute(false);
   };
 
   // 重新排序目的地
@@ -166,6 +251,7 @@ function App() {
       routePolylineRef.current = null;
       setRouteInfo(null);
       setRouteNeedsUpdate(true);
+      setHasRoute(false);
       alert('顺序已调整，请重新规划路线');
     }
   };
@@ -230,6 +316,7 @@ function App() {
             routePolylineRef.current = null;
             setRouteInfo(null);
             setRouteNeedsUpdate(true);
+            setHasRoute(false);
           }
           
           alert('已将当前位置设为起点');
@@ -239,6 +326,69 @@ function App() {
         }
       });
     });
+  };
+
+  // 播放路线动画
+  const handlePlayAnimation = () => {
+    if (!map || !routePathRef.current || routePathRef.current.length === 0) {
+      alert('请先规划路线');
+      return;
+    }
+
+    if (isAnimating) {
+      alert('动画正在播放中');
+      return;
+    }
+
+    setIsAnimating(true);
+
+    // 创建动画小车标记
+    if (animationMarkerRef.current) {
+      map.remove(animationMarkerRef.current);
+    }
+
+    const marker = new AMap.Marker({
+      position: routePathRef.current[0],
+      icon: new AMap.Icon({
+        size: new AMap.Size(32, 32),
+        image: 'https://webapi.amap.com/images/car.png',
+        imageSize: new AMap.Size(32, 32),
+      }),
+      offset: new AMap.Pixel(-16, -16),
+    });
+
+    map.add(marker);
+    animationMarkerRef.current = marker;
+
+    // 手动实现动画 - 每50ms移动一次
+    const path = routePathRef.current;
+    const totalDuration = 5000; // 5秒
+    const steps = 100; // 100步
+    const stepDuration = totalDuration / steps;
+    const pointsPerStep = Math.max(1, Math.floor(path.length / steps));
+    
+    let currentStep = 0;
+    const animationInterval = setInterval(() => {
+      currentStep++;
+      const currentIndex = Math.min(currentStep * pointsPerStep, path.length - 1);
+      const currentPoint = path[currentIndex];
+      
+      if (currentPoint && marker) {
+        marker.setPosition(currentPoint);
+      }
+      
+      if (currentStep >= steps) {
+        clearInterval(animationInterval);
+        // 动画结束后清理
+        setTimeout(() => {
+          if (animationMarkerRef.current) {
+            map.remove(animationMarkerRef.current);
+            animationMarkerRef.current = null;
+          }
+          setIsAnimating(false);
+        }, 500);
+      }
+    }, stepDuration);
   };
 
   // 规划路线
@@ -257,6 +407,7 @@ function App() {
     if (routePolylineRef.current) {
       map.remove(routePolylineRef.current);
       routePolylineRef.current = null;
+      setHasRoute(false);
     }
 
     // 开始规划，清除提示状态
@@ -265,7 +416,7 @@ function App() {
     // 加载 Driving 插件
     AMap.plugin('AMap.Driving', () => {
       const driving = new AMap.Driving({
-        policy: AMap.DrivingPolicy.LEAST_TIME, // 最短时间
+        policy: AMap.DrivingPolicy[routePolicy], // 使用选择的策略
         map: map,
         hideMarkers: true, // 隐藏默认标记，使用我们自己的标记
       });
@@ -309,21 +460,52 @@ function App() {
             setRouteInfo({
               distance: totalDistance,
               duration: totalDuration,
+              policy: routePolicy,
             });
 
-            // 保存路线引用
-            if (result.routes[0] && result.routes[0].path) {
+            // 获取路线路径 - 尝试多种方式
+            let routePath = null;
+            
+            // 方式1: 从 steps 中提取所有路径点
+            if (result.routes[0] && result.routes[0].steps) {
+              const allPoints = [];
+              result.routes[0].steps.forEach(step => {
+                if (step.path && step.path.length > 0) {
+                  allPoints.push(...step.path);
+                }
+              });
+              if (allPoints.length > 0) {
+                routePath = allPoints;
+                console.log('从 steps 中提取路径，点数:', allPoints.length);
+              }
+            }
+            
+            // 方式2: 直接使用 routes[0].path
+            if (!routePath && result.routes[0] && result.routes[0].path) {
+              routePath = result.routes[0].path;
+              console.log('使用 routes[0].path，点数:', routePath.length);
+            }
+
+            if (routePath && routePath.length > 0) {
+              // 绘制路线
               const polyline = new AMap.Polyline({
-                path: result.routes[0].path,
+                path: routePath,
                 strokeColor: '#1890ff',
                 strokeWeight: 6,
                 strokeOpacity: 0.8,
               });
               map.add(polyline);
               routePolylineRef.current = polyline;
+              routePathRef.current = routePath; // 保存路径用于动画
+              console.log('✅ 路径保存成功，点数:', routePath.length);
+              
+              // 设置已有路线状态
+              setHasRoute(true);
 
               // 调整地图视野以显示整条路线
               map.setFitView();
+            } else {
+              console.error('⚠️ 未能获取路径数据');
             }
           } else {
             console.error('路线规划失败', result);
@@ -338,7 +520,12 @@ function App() {
     <div className="app">
       <div className="sidebar">
         <div className="sidebar-header">
-          <h2>智能旅游路线规划</h2>
+          <div className="header-content">
+            <h2>智能旅游路线规划</h2>
+            {saveStatus && (
+              <div className="save-status">{saveStatus}</div>
+            )}
+          </div>
         </div>
         <div className="sidebar-content">
           <div className="search-section">
@@ -355,7 +542,11 @@ function App() {
               onPlanRoute={handlePlanRoute}
               onClearAll={handleClearAll}
               onReorder={handleReorder}
-              hasRoute={!!routePolylineRef.current}
+              hasRoute={!!routeInfo}
+              routePolicy={routePolicy}
+              onRoutePolicyChange={setRoutePolicy}
+              onPlayAnimation={handlePlayAnimation}
+              isAnimating={isAnimating}
             />
             {routeNeedsUpdate && destinations.length >= 2 && (
               <div className="route-update-tip">

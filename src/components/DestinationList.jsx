@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './DestinationList.css';
 
-function DestinationList({ destinations, onRemove, onPlanRoute, onClearAll, onReorder, hasRoute }) {
+function DestinationList({ destinations, onRemove, onPlanRoute, onClearAll, onReorder, hasRoute, routePolicy, onRoutePolicyChange, onPlayAnimation, isAnimating }) {
   const [draggedIndex, setDraggedIndex] = useState(null);
   return (
     <div className="destination-list">
@@ -54,6 +54,23 @@ function DestinationList({ destinations, onRemove, onPlanRoute, onClearAll, onRe
             </ul>
           </div>
           
+          {/* 路线策略选择 */}
+          {destinations.length >= 2 && (
+            <div className="route-policy-selector">
+              <label className="policy-label">路线策略：</label>
+              <select 
+                className="policy-select"
+                value={routePolicy}
+                onChange={(e) => onRoutePolicyChange(e.target.value)}
+              >
+                <option value="LEAST_TIME">最短时间</option>
+                <option value="LEAST_DISTANCE">最短距离</option>
+                <option value="LEAST_FEE">避免收费</option>
+                <option value="LEAST_TRAFFIC">避免拥堵</option>
+              </select>
+            </div>
+          )}
+          
           <div className="action-buttons">
             {destinations.length >= 2 && (
               <button
@@ -61,6 +78,20 @@ function DestinationList({ destinations, onRemove, onPlanRoute, onClearAll, onRe
                 onClick={onPlanRoute}
               >
                 {hasRoute ? '重新规划' : '规划路线'}
+              </button>
+            )}
+            {destinations.length >= 2 && onPlayAnimation && (
+              <button
+                className="animation-button"
+                onClick={onPlayAnimation}
+                disabled={isAnimating || !hasRoute}
+                style={{
+                  backgroundColor: hasRoute && !isAnimating ? '#722ed1' : '#d3adf7',
+                  cursor: hasRoute && !isAnimating ? 'pointer' : 'not-allowed'
+                }}
+                title={!hasRoute ? '请先规划路线' : ''}
+              >
+                {isAnimating ? '播放中...' : '路线演示'}
               </button>
             )}
             <button
