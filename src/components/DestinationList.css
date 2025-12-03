@@ -231,6 +231,67 @@
   background-color: #ff7875;
 }
 
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .list-title {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+  
+  .destinations-wrapper {
+    max-height: 200px;
+  }
+  
+  .destination-item {
+    padding: 10px;
+  }
+  
+  .destination-number {
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+  }
+  
+  .destination-name {
+    font-size: 13px;
+  }
+  
+  .destination-address {
+    font-size: 11px;
+  }
+  
+  .remove-button {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+  
+  .route-policy-selector {
+    padding: 8px 10px;
+    margin-bottom: 8px;
+  }
+  
+  .policy-label {
+    font-size: 13px;
+  }
+  
+  .policy-select {
+    font-size: 13px;
+    padding: 5px 8px;
+  }
+  
+  .action-buttons {
+    gap: 8px;
+    margin-top: 12px;
+  }
+  
+  .plan-route-button,
+  .animation-button,
+  .clear-all-button {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+}
+
 .animation-button {
   flex: 1;
   min-width: 100px;

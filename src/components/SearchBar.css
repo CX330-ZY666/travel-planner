@@ -198,3 +198,63 @@
   font-size: 12px;
   color: #999;
 }
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .search-input {
+    font-size: 13px;
+    padding: 10px 12px;
+  }
+  
+  .search-button {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+  
+  .location-button {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  
+  .search-results {
+    max-height: 180px;
+  }
+  
+  .results-header {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  
+  .result-item {
+    padding: 10px 12px;
+  }
+  
+  .result-name {
+    font-size: 13px;
+  }
+  
+  .result-address {
+    font-size: 11px;
+  }
+  
+  .add-button {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+  
+  .suggestions-dropdown {
+    max-height: 200px;
+  }
+  
+  .suggestion-item {
+    padding: 8px 12px;
+  }
+  
+  .suggestion-name {
+    font-size: 13px;
+  }
+  
+  .suggestion-district {
+    font-size: 11px;
+  }
+}
