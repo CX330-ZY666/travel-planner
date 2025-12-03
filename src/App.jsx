@@ -15,6 +15,7 @@ function App() {
   const [routePolicy, setRoutePolicy] = useState('LEAST_TIME'); // 路线策略
   const [isAnimating, setIsAnimating] = useState(false); // 动画状态
   const [hasRoute, setHasRoute] = useState(false); // 是否已规划路线
+  const [activeTab, setActiveTab] = useState('itinerary'); // 'itinerary' 或 'route'
   const markersRef = useRef([]);
   const routePolylineRef = useRef(null);
   const animationMarkerRef = useRef(null); // 动画小车
@@ -530,35 +531,63 @@ function App() {
             )}
           </div>
         </div>
+        
+        {/* 搜索区域 - 固定在顶部 */}
+        <div className="search-section-fixed">
+          <SearchBar 
+            map={map} 
+            onAddDestination={handleAddDestination}
+            onUseCurrentLocation={handleUseCurrentLocation}
+          />
+        </div>
+        
+        {/* 选项卡 */}
+        <div className="tabs">
+          <button 
+            className={`tab ${activeTab === 'itinerary' ? 'active' : ''}`}
+            onClick={() => setActiveTab('itinerary')}
+          >
+            <span className="tab-icon">📍</span>
+            行程管理
+          </button>
+          <button 
+            className={`tab ${activeTab === 'route' ? 'active' : ''}`}
+            onClick={() => setActiveTab('route')}
+            disabled={!routeInfo}
+          >
+            <span className="tab-icon">🛣️</span>
+            路线详情
+          </button>
+        </div>
+        
+        {/* 内容区域 */}
         <div className="sidebar-content">
-          <div className="search-section">
-            <SearchBar 
-              map={map} 
-              onAddDestination={handleAddDestination}
-              onUseCurrentLocation={handleUseCurrentLocation}
-            />
-          </div>
-          <div className="itinerary-section">
-            <DestinationList 
-              destinations={destinations}
-              onRemove={handleRemoveDestination}
-              onPlanRoute={handlePlanRoute}
-              onClearAll={handleClearAll}
-              onReorder={handleReorder}
-              hasRoute={!!routeInfo}
-              routePolicy={routePolicy}
-              onRoutePolicyChange={setRoutePolicy}
-              onPlayAnimation={handlePlayAnimation}
-              isAnimating={isAnimating}
-            />
-            {routeNeedsUpdate && destinations.length >= 2 && (
-              <div className="route-update-tip">
-                ⚠️ 行程已更新，请重新规划路线
-              </div>
-            )}
-            <RouteInfo routeInfo={routeInfo} />
-            <RouteSegments routeInfo={routeInfo} destinations={destinations} />
-          </div>
+          {activeTab === 'itinerary' ? (
+            <div className="tab-content">
+              <DestinationList 
+                destinations={destinations}
+                onRemove={handleRemoveDestination}
+                onPlanRoute={handlePlanRoute}
+                onClearAll={handleClearAll}
+                onReorder={handleReorder}
+                hasRoute={!!routeInfo}
+                routePolicy={routePolicy}
+                onRoutePolicyChange={setRoutePolicy}
+                onPlayAnimation={handlePlayAnimation}
+                isAnimating={isAnimating}
+              />
+              {routeNeedsUpdate && destinations.length >= 2 && (
+                <div className="route-update-tip">
+                  ⚠️ 行程已更新，请重新规划路线
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="tab-content">
+              <RouteInfo routeInfo={routeInfo} />
+              <RouteSegments routeInfo={routeInfo} destinations={destinations} />
+            </div>
+          )}
         </div>
       </div>
       <div className="map-wrapper">

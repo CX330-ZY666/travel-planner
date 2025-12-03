@@ -1,7 +1,10 @@
 import './RouteSegments.css';
 
 function RouteSegments({ routeInfo, destinations }) {
+  console.log('RouteSegments 渲染:', { routeInfo, destinations });
+  
   if (!routeInfo || !routeInfo.segments || routeInfo.segments.length === 0) {
+    console.log('RouteSegments: 无数据，不渲染');
     return null;
   }
 
@@ -82,17 +85,6 @@ function RouteSegments({ routeInfo, destinations }) {
             </div>
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-export default RouteSegments;
-                )}
-              </div>
-            )}
-          </div>
-        ))}
       </div>
     </div>
   );

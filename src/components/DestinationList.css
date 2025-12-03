@@ -6,11 +6,19 @@
 }
 
 .list-title {
-  margin: 0 0 10px 0;
-  font-size: 17px;
+  margin: 0 0 15px 0;
+  font-size: 18px;
   font-weight: 600;
-  color: #333;
+  color: #1a1a1a;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.list-title::before {
+  content: '📍';
+  font-size: 20px;
 }
 
 .empty-message {
@@ -38,17 +46,20 @@
 .destination-item {
   display: flex;
   align-items: center;
-  padding: 10px;
+  padding: 12px;
   background: white;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  margin-bottom: 8px;
-  transition: all 0.2s;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  transition: all 0.3s;
   cursor: move;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .destination-item:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+  border-color: #d9d9d9;
 }
 
 .destination-item.dragging {
@@ -80,10 +91,10 @@
 }
 
 .destination-number {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background-color: #1890ff;
+  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
   color: white;
   display: flex;
   align-items: center;
@@ -91,6 +102,7 @@
   font-weight: 600;
   font-size: 14px;
   flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(22, 119, 255, 0.3);
 }
 
 .destination-info {
@@ -174,25 +186,33 @@
 .action-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   flex-shrink: 0;
+  margin-top: 15px;
 }
 
 .plan-route-button {
   flex: 1;
   min-width: 100px;
-  padding: 10px;
-  background-color: #52c41a;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #52c41a 0%, #3da80f 100%);
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 600;
+  transition: all 0.3s;
+  box-shadow: 0 2px 4px rgba(82, 196, 26, 0.3);
 }
 
 .plan-route-button:hover {
-  background-color: #73d13d;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(82, 196, 26, 0.4);
+}
+
+.plan-route-button:active {
+  transform: translateY(0);
 }
 
 .clear-all-button {
