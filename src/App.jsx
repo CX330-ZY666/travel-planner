@@ -5,6 +5,7 @@ import DestinationList from './components/DestinationList';
 import RouteInfo from './components/RouteInfo';
 import RouteSegments from './components/RouteSegments';
 import CostEstimator from './components/CostEstimator';
+import HistoryList from './components/HistoryList';
 import './App.css';
 
 function App() {
@@ -16,7 +17,15 @@ function App() {
   const [routePolicy, setRoutePolicy] = useState('LEAST_TIME'); // 路线策略
   const [isAnimating, setIsAnimating] = useState(false); // 动画状态
   const [hasRoute, setHasRoute] = useState(false); // 是否已规划路线
-  const [activeTab, setActiveTab] = useState('itinerary'); // 'itinerary' 或 'route'
+  const [activeTab, setActiveTab] = useState('itinerary'); // 'itinerary' | 'route' | 'history'
+  const [history, setHistory] = useState([]); // 本地历史记录
+  // 导航/路况/语音
+  const [trafficOn, setTrafficOn] = useState(false);
+  const trafficLayerRef = useRef(null);
+  const [ttsOn, setTtsOn] = useState(false);
+  const [ttsSpeaking, setTtsSpeaking] = useState(false);
+  const [ttsRate, setTtsRate] = useState(1);
+
   const markersRef = useRef([]);
   const routePolylineRef = useRef(null);
   const animationMarkerRef = useRef(null); // 动画小车
@@ -24,36 +33,39 @@ function App() {
   const saveTimeoutRef = useRef(null);
   const routePathRef = useRef(null); // 保存路线路径
 
-  // 初始化时从 URL 参数或 localStorage 恢复数据
+  // 初始化时从 URL 参数或 localStorage 恢复数据，并加载历史记录
   useEffect(() => {
     try {
       // 优先检查 URL 参数
       const urlParams = new URLSearchParams(window.location.search);
       const sharedData = urlParams.get('share');
-      
+
       if (sharedData) {
-        // 从分享链接恢复
         try {
           const decoded = decodeURIComponent(atob(sharedData));
           const parsed = JSON.parse(decoded);
           setDestinations(parsed.destinations || []);
-          if (parsed.routePolicy) {
-            setRoutePolicy(parsed.routePolicy);
-          }
+          if (parsed.routePolicy) setRoutePolicy(parsed.routePolicy);
           console.log('已从分享链接恢复行程', parsed);
-          // 清除 URL 参数
           window.history.replaceState({}, '', window.location.pathname);
         } catch (e) {
           console.error('解析分享链接失败', e);
         }
-      }
-        // 从 localStorage 恢复
+      } else {
         const savedDestinations = localStorage.getItem('travel_planner_destinations');
         if (savedDestinations) {
           const parsed = JSON.parse(savedDestinations);
           setDestinations(parsed);
           console.log('已恢复保存的行程', parsed);
         }
+      }
+
+      // 加载历史记录
+      try {
+        const savedHistory = localStorage.getItem('travel_planner_history');
+        if (savedHistory) setHistory(JSON.parse(savedHistory));
+      } catch (e) {
+        console.warn('读取历史记录失败', e);
       }
     } catch (error) {
       console.error('恢复行程失败', error);
@@ -113,12 +125,94 @@ function App() {
     }
   }, [map, destinations]);
 
+  // 路况图层开关
+  useEffect(() => {
+    if (!map) return;
+    if (trafficOn) {
+      try {
+        if (!trafficLayerRef.current) {
+          trafficLayerRef.current = new AMap.TileLayer.Traffic({ zIndex: 10 });
+        }
+        map.add(trafficLayerRef.current);
+      } catch (e) {
+        console.warn('开启路况失败', e);
+      }
+    } else {
+      if (trafficLayerRef.current) {
+        try { map.remove(trafficLayerRef.current); } catch {}
+      }
+    }
+  }, [trafficOn, map]);
+
   // 当路线策略变化时，如果已有路线则自动重新规划
   useEffect(() => {
     if (routePolylineRef.current && !isRestoringData) {
       handlePlanRoute();
     }
   }, [routePolicy]);
+
+  // 一键打开高德导航（Web 优先，移动端可用 scheme）
+  const handleOpenAmapNav = () => {
+    if (!destinations || destinations.length < 2) {
+      alert('请至少选择起点和终点');
+      return;
+    }
+    const start = destinations[0].location;
+    const end = destinations[destinations.length - 1].location;
+    const viaList = destinations.slice(1, -1);
+
+    const viaParam = viaList
+      .map(v => `${v.location.lng},${v.location.lat}`)
+      .join('|');
+
+    // Web 导航 URL（PC/移动通用）
+    const base = 'https://www.amap.com/navi/';
+    const params = new URLSearchParams();
+    params.set('start', `${start.lng},${start.lat}`);
+    params.set('dest', `${end.lng},${end.lat}`);
+    if (viaParam) params.set('via', viaParam);
+    params.set('mode', 'car');
+    // 策略映射（简单映射）
+    // AMap Web: policy=1(速度优先) 2(距离优先) 3(避免收费) 4(不走高速) 5(多策略) 6(时间最短且不走收费)
+    const policyMap = { LEAST_TIME: '1', LEAST_DISTANCE: '2', LEAST_FEE: '3', LEAST_TRAFFIC: '6' };
+    params.set('policy', policyMap[routePolicy] || '1');
+
+    const url = `${base}?${params.toString()}`;
+    window.open(url, '_blank');
+  };
+
+  // 语音播报当前路线指令
+  const handleSpeakRoute = () => {
+    if (!routeInfo || !routeInfo.segments || routeInfo.segments.length === 0) return;
+    const synth = window.speechSynthesis;
+    if (!synth) {
+      alert('当前浏览器不支持语音播报');
+      return;
+    }
+    // 停止
+    if (ttsSpeaking) {
+      synth.cancel();
+      setTtsSpeaking(false);
+      return;
+    }
+    if (!ttsOn) {
+      setTtsOn(true);
+    }
+    const steps = routeInfo.segments.map(s => s.instruction || '直行');
+    let idx = 0;
+    setTtsSpeaking(true);
+    const speakNext = () => {
+      if (idx >= steps.length) { setTtsSpeaking(false); return; }
+      const u = new SpeechSynthesisUtterance(steps[idx]);
+      u.lang = 'zh-CN';
+      u.rate = Math.max(0.7, Math.min(2, ttsRate || 1));
+      u.onend = () => { idx += 1; speakNext(); };
+      u.onerror = () => { idx += 1; speakNext(); };
+      if (!ttsOn) { setTtsSpeaking(false); synth.cancel(); return; }
+      synth.speak(u);
+    };
+    speakNext();
+  };
 
   const handleMapReady = (mapInstance) => {
     setMap(mapInstance);
@@ -557,6 +651,21 @@ function App() {
               // 设置已有路线状态
               setHasRoute(true);
 
+              // 保存历史记录（最多10条）
+              try {
+                const record = {
+                  id: `rec_${Date.now()}`,
+                  createdAt: Date.now(),
+                  destinations: [...destinations],
+                  routeInfo: { distance: totalDistance, duration: totalDuration, policy: routePolicy },
+                };
+                const newHistory = [record, ...(history || [])].slice(0, 10);
+                setHistory(newHistory);
+                localStorage.setItem('travel_planner_history', JSON.stringify(newHistory));
+              } catch (e) {
+                console.warn('保存历史失败', e);
+              }
+
               // 调整地图视野以显示整条路线
               map.setFitView();
             } else {
@@ -609,6 +718,14 @@ function App() {
             <span className="tab-icon">🛣️</span>
             路线详情
           </button>
+          <button 
+            className={`tab ${activeTab === 'history' ? 'active' : ''}`}
+            onClick={() => setActiveTab('history')}
+            disabled={(history || []).length === 0}
+          >
+            <span className="tab-icon">🕘</span>
+            历史记录
+          </button>
         </div>
         
         {/* 内容区域 */}
@@ -633,11 +750,53 @@ function App() {
                 </div>
               )}
             </div>
-          ) : (
+          ) : activeTab === 'route' ? (
             <div className="tab-content">
               <RouteInfo routeInfo={routeInfo} />
+
+              {/* 导航与路况控制 */}
+              <div className="route-controls" style={{marginTop: 10, marginBottom: 10, background:'#fff', border:'1px solid #f0f0f0', borderRadius:8, padding:12}}>
+                <div style={{display:'flex', gap:8, flexWrap:'wrap', alignItems:'center', marginBottom:8}}>
+                  <button onClick={handleOpenAmapNav} disabled={!routeInfo} style={{padding:'10px 14px', background:'#1677ff', color:'#fff', border:'none', borderRadius:6, cursor: routeInfo ? 'pointer':'not-allowed'}}>打开高德导航</button>
+                  <label style={{display:'flex', alignItems:'center', gap:6}}>
+                    <input type="checkbox" checked={trafficOn} onChange={(e)=>setTrafficOn(e.target.checked)} /> 实时路况
+                  </label>
+                  <label style={{display:'flex', alignItems:'center', gap:6}}>
+                    <input type="checkbox" checked={ttsOn} onChange={(e)=>{ setTtsOn(e.target.checked); if(!e.target.checked){ try{ window.speechSynthesis?.cancel(); }catch{} setTtsSpeaking(false);} }} /> 语音播报
+                  </label>
+                  <div style={{display:'flex', alignItems:'center', gap:6}}>
+                    <span style={{fontSize:12, color:'#666'}}>语速</span>
+                    <input type="range" min="0.7" max="1.8" step="0.1" value={ttsRate} onChange={(e)=>setTtsRate(parseFloat(e.target.value))} style={{width:120}} />
+                  </div>
+                  <button onClick={handleSpeakRoute} disabled={!routeInfo || !ttsOn} style={{padding:'8px 12px', background:'#faad14', color:'#fff', border:'none', borderRadius:6, cursor: (routeInfo && ttsOn)?'pointer':'not-allowed'}}>{ttsSpeaking?'停止播报':'播报路线指令'}</button>
+                </div>
+              </div>
+
               <CostEstimator routeInfo={routeInfo} />
               <RouteSegments routeInfo={routeInfo} destinations={destinations} />
+            </div>
+          ) : (
+            <div className="tab-content">
+              <HistoryList 
+                history={history}
+                onLoad={(item) => {
+                  setDestinations(item.destinations || []);
+                  setRouteInfo(item.routeInfo || null);
+                  setActiveTab('itinerary');
+                  setRouteNeedsUpdate(true);
+                }}
+                onDelete={(id) => {
+                  const newHistory = (history || []).filter(h => h.id !== id);
+                  setHistory(newHistory);
+                  localStorage.setItem('travel_planner_history', JSON.stringify(newHistory));
+                }}
+                onClearAll={() => {
+                  if (window.confirm('确认清空所有历史记录？')) {
+                    setHistory([]);
+                    localStorage.removeItem('travel_planner_history');
+                  }
+                }}
+              />
             </div>
           )}
         </div>
