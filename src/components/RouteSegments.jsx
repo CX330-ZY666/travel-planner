@@ -1,106 +1,93 @@
-import { useState } from 'react';
 import './RouteSegments.css';
 
 function RouteSegments({ routeInfo, destinations }) {
-  const [expandedIndex, setExpandedIndex] = useState(null);
-
   if (!routeInfo || !routeInfo.segments || routeInfo.segments.length === 0) {
     return null;
   }
 
-  const segments = routeInfo.segments;
-
-  const toggleExpand = (index) => {
-    setExpandedIndex(expandedIndex === index ? null : index);
-  };
-
   // 格式化距离
   const formatDistance = (meters) => {
-    if (meters < 1000) {
-      return `${Math.round(meters)} 米`;
+    if (meters >= 1000) {
+      return `${(meters / 1000).toFixed(1)}km`;
     }
-    return `${(meters / 1000).toFixed(1)} 公里`;
+    return `${meters}m`;
   };
 
   // 格式化时间
   const formatDuration = (seconds) => {
-    const minutes = Math.round(seconds / 60);
-    if (minutes < 60) {
-      return `${minutes} 分钟`;
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (hours > 0) {
+      return `${hours}小时${minutes}分`;
     }
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours} 小时 ${mins} 分钟`;
+    return `${minutes}分钟`;
   };
 
-  // 获取转向图标
-  const getActionIcon = (action) => {
-    const icons = {
-      '左转': '↰',
-      '右转': '↱',
-      '直行': '↑',
-      '到达': '🏁',
-      '出发': '🚩',
+  // 根据action获取图标类名和显示文字
+  const getActionInfo = (action, instruction) => {
+    const actionMap = {
+      'left': { icon: 'turn-left', text: '左转' },
+      'right': { icon: 'turn-right', text: '右转' },
+      'straight': { icon: 'straight', text: '直行' },
+      'start': { icon: 'start', text: '出发' },
+      'end': { icon: 'end', text: '到达' },
     };
     
-    for (const [key, icon] of Object.entries(icons)) {
-      if (action && action.includes(key)) {
-        return icon;
-      }
+    // 根据instruction智能判断
+    if (instruction) {
+      if (instruction.includes('左转')) return { icon: 'turn-left', text: instruction };
+      if (instruction.includes('右转')) return { icon: 'turn-right', text: instruction };
+      if (instruction.includes('直行')) return { icon: 'straight', text: instruction };
+      if (instruction.includes('到达') || instruction.includes('终点')) return { icon: 'end', text: instruction };
+      if (instruction.includes('出发') || instruction.includes('起点')) return { icon: 'start', text: instruction };
     }
-    return '→';
+    
+    return actionMap[action] || { icon: 'straight', text: instruction || '继续前行' };
   };
 
   return (
-    <div className="route-segments">
-      <div className="route-segments-header">
-        <h3>详细路线</h3>
-        <span className="segment-count">{segments.length} 个路段</span>
+    <div className="route-segments-amap">
+      <div className="segments-header-amap">
+        <div className="header-left">
+          <span className="route-icon">🛣️</span>
+          <span className="header-title">导航路线</span>
+        </div>
+        <span className="segments-count">{routeInfo.segments.length}个路段</span>
       </div>
       
-      <div className="segments-list">
-        {segments.map((segment, index) => (
-          <div key={index} className="segment-item">
-            <div 
-              className="segment-summary"
-              onClick={() => toggleExpand(index)}
-            >
-              <div className="segment-number">{index + 1}</div>
-              <div className="segment-info">
-                <div className="segment-instruction">
-                  <span className="action-icon">{getActionIcon(segment.action)}</span>
-                  <span className="action-text">{segment.instruction || segment.road || '继续前进'}</span>
-                </div>
-                <div className="segment-meta">
-                  <span className="segment-distance">{formatDistance(segment.distance)}</span>
-                  <span className="segment-divider">·</span>
-                  <span className="segment-duration">{formatDuration(segment.time)}</span>
-                </div>
+      <div className="segments-timeline">
+        {routeInfo.segments.map((segment, index) => {
+          const actionInfo = getActionInfo(segment.action, segment.instruction);
+          const isFirst = index === 0;
+          const isLast = index === routeInfo.segments.length - 1;
+          
+          return (
+            <div key={index} className={`timeline-item ${isFirst ? 'first' : ''} ${isLast ? 'last' : ''}`}>
+              <div className="timeline-marker">
+                <div className={`timeline-dot ${actionInfo.icon}`}></div>
+                {!isLast && <div className="timeline-line"></div>}
               </div>
-              <div className="segment-toggle">
-                {expandedIndex === index ? '▲' : '▼'}
+              
+              <div className="timeline-content">
+                <div className="step-instruction">{actionInfo.text}</div>
+                {segment.road && (
+                  <div className="step-road">经 {segment.road}</div>
+                )}
+                <div className="step-meta">
+                  <span className="meta-distance">{formatDistance(segment.distance)}</span>
+                  <span className="meta-divider">|</span>
+                  <span className="meta-time">{formatDuration(segment.time)}</span>
+                </div>
               </div>
             </div>
-            
-            {expandedIndex === index && (
-              <div className="segment-details">
-                {segment.road && (
-                  <div className="detail-item">
-                    <span className="detail-label">道路：</span>
-                    <span className="detail-value">{segment.road}</span>
-                  </div>
-                )}
-                {segment.orientation && (
-                  <div className="detail-item">
-                    <span className="detail-label">方向：</span>
-                    <span className="detail-value">{segment.orientation}</span>
-                  </div>
-                )}
-                {segment.assistant_action && (
-                  <div className="detail-item">
-                    <span className="detail-label">辅助：</span>
-                    <span className="detail-value">{segment.assistant_action}</span>
-                  </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export default RouteSegments;
                 )}
               </div>
             )}

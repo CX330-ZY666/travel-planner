@@ -27,23 +27,27 @@ function RouteInfo({ routeInfo }) {
   const policyName = policyNames[routeInfo.policy] || '最短时间';
 
   return (
-    <div className="route-info">
-      <div className="route-info-header">
-        <h3>路线信息</h3>
+    <div className="route-info-amap">
+      <div className="route-summary">
+        <div className="summary-item distance">
+          <div className="summary-icon">📍</div>
+          <div className="summary-content">
+            <div className="summary-label">总距离</div>
+            <div className="summary-value">{distance}km</div>
+          </div>
+        </div>
+        <div className="summary-divider"></div>
+        <div className="summary-item time">
+          <div className="summary-icon">⏱️</div>
+          <div className="summary-content">
+            <div className="summary-label">预计时间</div>
+            <div className="summary-value">{timeText}</div>
+          </div>
+        </div>
       </div>
-      <div className="route-info-content">
-        <div className="info-item">
-          <span className="info-label">路线策略</span>
-          <span className="info-value policy-badge">{policyName}</span>
-        </div>
-        <div className="info-item">
-          <span className="info-label">总距离</span>
-          <span className="info-value">{distance} 公里</span>
-        </div>
-        <div className="info-item">
-          <span className="info-label">预计时间</span>
-          <span className="info-value">{timeText}</span>
-        </div>
+      <div className="route-strategy">
+        <span className="strategy-label">当前策略</span>
+        <span className="strategy-badge">{policyName}</span>
       </div>
     </div>
   );
