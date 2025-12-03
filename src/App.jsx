@@ -151,35 +151,6 @@ function App() {
     }
   }, [routePolicy]);
 
-  // 一键打开高德导航（Web 优先，移动端可用 scheme）
-  const handleOpenAmapNav = () => {
-    if (!destinations || destinations.length < 2) {
-      alert('请至少选择起点和终点');
-      return;
-    }
-    const start = destinations[0].location;
-    const end = destinations[destinations.length - 1].location;
-    const viaList = destinations.slice(1, -1);
-
-    const viaParam = viaList
-      .map(v => `${v.location.lng},${v.location.lat}`)
-      .join('|');
-
-    // Web 导航 URL（PC/移动通用）
-    const base = 'https://www.amap.com/navi/';
-    const params = new URLSearchParams();
-    params.set('start', `${start.lng},${start.lat}`);
-    params.set('dest', `${end.lng},${end.lat}`);
-    if (viaParam) params.set('via', viaParam);
-    params.set('mode', 'car');
-    // 策略映射（简单映射）
-    // AMap Web: policy=1(速度优先) 2(距离优先) 3(避免收费) 4(不走高速) 5(多策略) 6(时间最短且不走收费)
-    const policyMap = { LEAST_TIME: '1', LEAST_DISTANCE: '2', LEAST_FEE: '3', LEAST_TRAFFIC: '6' };
-    params.set('policy', policyMap[routePolicy] || '1');
-
-    const url = `${base}?${params.toString()}`;
-    window.open(url, '_blank');
-  };
 
   // 语音播报当前路线指令
   const handleSpeakRoute = () => {
@@ -757,7 +728,6 @@ function App() {
               {/* 导航与路况控制 */}
               <div className="route-controls" style={{marginTop: 10, marginBottom: 10, background:'#fff', border:'1px solid #f0f0f0', borderRadius:8, padding:12}}>
                 <div style={{display:'flex', gap:8, flexWrap:'wrap', alignItems:'center', marginBottom:8}}>
-                  <button onClick={handleOpenAmapNav} disabled={!routeInfo} style={{padding:'10px 14px', background:'#1677ff', color:'#fff', border:'none', borderRadius:6, cursor: routeInfo ? 'pointer':'not-allowed'}}>打开高德导航</button>
                   <label style={{display:'flex', alignItems:'center', gap:6}}>
                     <input type="checkbox" checked={trafficOn} onChange={(e)=>setTrafficOn(e.target.checked)} /> 实时路况
                   </label>
