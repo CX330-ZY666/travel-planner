@@ -34,7 +34,7 @@ function App() {
       if (sharedData) {
         // 从分享链接恢复
         try {
-          const decoded = atob(sharedData);
+          const decoded = decodeURIComponent(atob(sharedData));
           const parsed = JSON.parse(decoded);
           setDestinations(parsed.destinations || []);
           if (parsed.routePolicy) {
@@ -46,7 +46,7 @@ function App() {
         } catch (e) {
           console.error('解析分享链接失败', e);
         }
-      } else {
+      }
         // 从 localStorage 恢复
         const savedDestinations = localStorage.getItem('travel_planner_destinations');
         if (savedDestinations) {

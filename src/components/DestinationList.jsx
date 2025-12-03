@@ -18,7 +18,9 @@ function DestinationList({ destinations, onRemove, onPlanRoute, onClearAll, onRe
         timestamp: Date.now()
       };
       
-      const encoded = btoa(JSON.stringify(shareData));
+      // 使用 encodeURIComponent 支持中文
+      const jsonStr = JSON.stringify(shareData);
+      const encoded = btoa(encodeURIComponent(jsonStr));
       const shareUrl = `${window.location.origin}${window.location.pathname}?share=${encoded}`;
       
       // 复制到剪贴板
