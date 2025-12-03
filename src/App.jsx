@@ -4,6 +4,7 @@ import SearchBar from './components/SearchBar';
 import DestinationList from './components/DestinationList';
 import RouteInfo from './components/RouteInfo';
 import RouteSegments from './components/RouteSegments';
+import CostEstimator from './components/CostEstimator';
 import './App.css';
 
 function App() {
@@ -635,6 +636,7 @@ function App() {
           ) : (
             <div className="tab-content">
               <RouteInfo routeInfo={routeInfo} />
+              <CostEstimator routeInfo={routeInfo} />
               <RouteSegments routeInfo={routeInfo} destinations={destinations} />
             </div>
           )}
