@@ -6,6 +6,7 @@ import RouteInfo from './components/RouteInfo';
 import RouteSegments from './components/RouteSegments';
 import CostEstimator from './components/CostEstimator';
 import HistoryList from './components/HistoryList';
+import DayTimeline from './components/DayTimeline';
 import './App.css';
 
 function App() {
@@ -27,6 +28,8 @@ function App() {
   const [ttsOn, setTtsOn] = useState(false);
   const [ttsSpeaking, setTtsSpeaking] = useState(false);
   const [ttsRate, setTtsRate] = useState(1);
+  const ttsAbortRef = useRef(false);
+  const ttsUtterRef = useRef(null);
 
   const markersRef = useRef([]);
   const routePolylineRef = useRef(null);
@@ -152,6 +155,15 @@ function App() {
     }
   }, [trafficOn, map]);
 
+  // 路线或天切换时，自动停止播报
+  useEffect(() => {
+    if (!ttsOn && !ttsSpeaking) return;
+    // 停止当前播报
+    try { window.speechSynthesis?.cancel(); } catch {}
+    ttsAbortRef.current = true;
+    setTtsSpeaking(false);
+  }, [activeDayIndex, routeInfo]);
+
   // 当路线策略变化时，如果已有路线则自动重新规划
   useEffect(() => {
     if (routePolylineRef.current && !isRestoringData) {
@@ -170,24 +182,28 @@ function App() {
     }
     // 停止
     if (ttsSpeaking) {
-      synth.cancel();
+      try { synth.cancel(); } catch {}
+      ttsAbortRef.current = true;
       setTtsSpeaking(false);
       return;
     }
     if (!ttsOn) {
       setTtsOn(true);
     }
+    ttsAbortRef.current = false;
     const steps = routeInfo.segments.map(s => s.instruction || '直行');
     let idx = 0;
     setTtsSpeaking(true);
     const speakNext = () => {
+      if (ttsAbortRef.current) { setTtsSpeaking(false); return; }
       if (idx >= steps.length) { setTtsSpeaking(false); return; }
       const u = new SpeechSynthesisUtterance(steps[idx]);
+      ttsUtterRef.current = u;
       u.lang = 'zh-CN';
       u.rate = Math.max(0.7, Math.min(2, ttsRate || 1));
-      u.onend = () => { idx += 1; speakNext(); };
-      u.onerror = () => { idx += 1; speakNext(); };
-      if (!ttsOn) { setTtsSpeaking(false); synth.cancel(); return; }
+      u.onend = () => { if (ttsAbortRef.current) { setTtsSpeaking(false); return; } idx += 1; speakNext(); };
+      u.onerror = () => { if (ttsAbortRef.current) { setTtsSpeaking(false); return; } idx += 1; speakNext(); };
+      if (!ttsOn) { setTtsSpeaking(false); try{synth.cancel();}catch{} return; }
       synth.speak(u);
     };
     speakNext();
@@ -787,6 +803,9 @@ function App() {
                 onRoutePolicyChange={setRoutePolicy}
                 onPlayAnimation={handlePlayAnimation}
                 isAnimating={isAnimating}
+                onUpdateDestination={(id, patch)=>{
+                  updateCurrentDayItems(items => items.map(d => d.id===id ? { ...d, ...patch } : d));
+                }}
               />
               {routeNeedsUpdate && destinations.length >= 2 && (
                 <div className="route-update-tip">
@@ -798,6 +817,9 @@ function App() {
             <div className="tab-content">
               <RouteInfo routeInfo={routeInfo} />
 
+              {/* 每日时间轴 */}
+              <DayTimeline destinations={destinations} />
+
               {/* 导航与路况控制 */}
               <div className="route-controls" style={{marginTop: 10, marginBottom: 10, background:'#fff', border:'1px solid #f0f0f0', borderRadius:8, padding:12}}>
                 <div style={{display:'flex', gap:8, flexWrap:'wrap', alignItems:'center', marginBottom:8}}>
@@ -805,7 +827,15 @@ function App() {
                     <input type="checkbox" checked={trafficOn} onChange={(e)=>setTrafficOn(e.target.checked)} /> 实时路况
                   </label>
                   <label style={{display:'flex', alignItems:'center', gap:6}}>
-                    <input type="checkbox" checked={ttsOn} onChange={(e)=>{ setTtsOn(e.target.checked); if(!e.target.checked){ try{ window.speechSynthesis?.cancel(); }catch{} setTtsSpeaking(false);} }} /> 语音播报
+                    <input type="checkbox" checked={ttsOn} onChange={(e)=>{ 
+                      const on = e.target.checked;
+                      setTtsOn(on);
+                      if(!on){
+                        ttsAbortRef.current = true;
+                        try{ window.speechSynthesis?.cancel(); }catch{}
+                        setTtsSpeaking(false);
+                      }
+                    }} /> 语音播报
                   </label>
                   <div style={{display:'flex', alignItems:'center', gap:6}}>
                     <span style={{fontSize:12, color:'#666'}}>语速</span>

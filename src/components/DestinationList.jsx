@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './DestinationList.css';
 
-function DestinationList({ destinations, onRemove, onPlanRoute, onClearAll, onReorder, hasRoute, routePolicy, onRoutePolicyChange, onPlayAnimation, isAnimating }) {
+function DestinationList({ destinations, onRemove, onPlanRoute, onClearAll, onReorder, hasRoute, routePolicy, onRoutePolicyChange, onPlayAnimation, isAnimating, onUpdateDestination }) {
   const [draggedIndex, setDraggedIndex] = useState(null);
   
   // 分享行程
@@ -75,12 +75,27 @@ function DestinationList({ destinations, onRemove, onPlanRoute, onClearAll, onRe
                     <div className="destination-name">{dest.name}</div>
                     <div className="destination-address">{dest.address}</div>
                   </div>
-                  <button
-                    className="remove-button"
-                    onClick={() => onRemove(dest.id)}
-                  >
-                    删除
-                  </button>
+                  <div style={{display:'flex', gap:8}}>
+                    <button
+                      className="remove-button"
+                      onClick={() => onRemove(dest.id)}
+                    >
+                      删除
+                    </button>
+                    <button
+                      className="remove-button"
+                      style={{background:'#faad14'}}
+                      title="设置到达时间与停留时长"
+                      onClick={() => {
+                        const t = window.prompt('到达时间（HH:MM）', dest.arrivalTime || '09:00');
+                        if (t === null) return;
+                        const m = window.prompt('停留时长（分钟）', String(dest.stayMinutes || 60));
+                        if (m === null) return;
+                        const patch = { arrivalTime: t, stayMinutes: parseInt(m, 10) || 0 };
+                        onUpdateDestination?.(dest.id, patch);
+                      }}
+                    >⏱️ 时间</button>
+                  </div>
                 </li>
               ))}
             </ul>
