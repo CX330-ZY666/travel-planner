@@ -1,8 +1,8 @@
-.day-timeline{margin-top:10px;border:1px solid #f0f0f0;border-radius:8px;background:#fff;overflow:hidden}
+.day-timeline{margin-top:10px;border:1px solid #f0f0f0;border-radius:8px;background:#fff;overflow-x:auto;overflow-y:hidden}
 .timeline-header{padding:10px 12px;background:#fafafa;border-bottom:1px solid #f0f0f0;font-size:13px;color:#666}
-.timeline-track{position:relative;padding:16px;overflow-x:auto;white-space:nowrap}
+.timeline-track{position:relative;padding:16px 16px 24px 16px;white-space:nowrap;min-height:96px}
 .timeline-block{position:absolute;top:20px;height:56px;background:linear-gradient(135deg,#e6f4ff,#bae7ff);border:1px solid #91d5ff;border-radius:8px;padding:6px 10px;box-sizing:border-box}
 .block-name{font-weight:600;font-size:13px;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
 .block-time{font-size:12px;color:#666;margin-top:4px}
-.timeline-scale{position:relative;height:28px;background:#fff;border-top:1px dashed #f0f0f0;overflow-x:auto}
+.timeline-scale{position:relative;height:28px;background:#fff;border-top:1px dashed #f0f0f0}
 .scale-item{position:absolute;top:4px;font-size:12px;color:#999}

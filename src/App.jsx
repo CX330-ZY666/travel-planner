@@ -158,11 +158,19 @@ function App() {
   // 路线或天切换时，自动停止播报
   useEffect(() => {
     if (!ttsOn && !ttsSpeaking) return;
-    // 停止当前播报
     try { window.speechSynthesis?.cancel(); } catch {}
     ttsAbortRef.current = true;
     setTtsSpeaking(false);
   }, [activeDayIndex, routeInfo]);
+
+  // 监听 ttsOn，关闭时立即打断
+  useEffect(() => {
+    if (!ttsOn) {
+      try { window.speechSynthesis?.cancel(); } catch {}
+      ttsAbortRef.current = true;
+      setTtsSpeaking(false);
+    }
+  }, [ttsOn]);
 
   // 当路线策略变化时，如果已有路线则自动重新规划
   useEffect(() => {
@@ -203,7 +211,7 @@ function App() {
       u.rate = Math.max(0.7, Math.min(2, ttsRate || 1));
       u.onend = () => { if (ttsAbortRef.current) { setTtsSpeaking(false); return; } idx += 1; speakNext(); };
       u.onerror = () => { if (ttsAbortRef.current) { setTtsSpeaking(false); return; } idx += 1; speakNext(); };
-      if (!ttsOn) { setTtsSpeaking(false); try{synth.cancel();}catch{} return; }
+      if (ttsAbortRef.current) { setTtsSpeaking(false); try{synth.cancel();}catch{} return; }
       synth.speak(u);
     };
     speakNext();
