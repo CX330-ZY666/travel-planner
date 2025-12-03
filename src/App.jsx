@@ -369,6 +369,16 @@ function App() {
     const stepDuration = 50; // 每50ms更新一次
     const totalSteps = Math.floor(totalDuration / stepDuration);
     
+    // 计算两点之间的角度（用于旋转小车）
+    const calculateAngle = (start, end) => {
+      if (!start || !end) return 0;
+      const dx = end.lng - start.lng;
+      const dy = end.lat - start.lat;
+      // 计算角度（弧度转角度），0度为正东，顺时针增加
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+      return angle;
+    };
+    
     let currentStep = 0;
     const animationInterval = setInterval(() => {
       currentStep++;
@@ -380,6 +390,15 @@ function App() {
       
       if (currentPoint && marker) {
         marker.setPosition(currentPoint);
+        
+        // 计算小车朝向（如果有下一个点）
+        const nextIndex = Math.min(currentIndex + 1, totalPoints - 1);
+        if (nextIndex > currentIndex) {
+          const nextPoint = path[nextIndex];
+          const angle = calculateAngle(currentPoint, nextPoint);
+          marker.setAngle(angle);
+        }
+        
         // 调整地图视野，让标记始终在视野内
         map.setCenter(currentPoint);
       }
