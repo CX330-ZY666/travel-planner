@@ -362,25 +362,34 @@ function App() {
     map.add(marker);
     animationMarkerRef.current = marker;
 
-    // 手动实现动画 - 每50ms移动一次
+    // 手动实现动画
     const path = routePathRef.current;
-    const totalDuration = 5000; // 5秒
-    const steps = 100; // 100步
-    const stepDuration = totalDuration / steps;
-    const pointsPerStep = Math.max(1, Math.floor(path.length / steps));
+    const totalDuration = 8000; // 8秒，让动画更流畅
+    const totalPoints = path.length;
+    const stepDuration = 50; // 每50ms更新一次
+    const totalSteps = Math.floor(totalDuration / stepDuration);
     
     let currentStep = 0;
     const animationInterval = setInterval(() => {
       currentStep++;
-      const currentIndex = Math.min(currentStep * pointsPerStep, path.length - 1);
+      
+      // 根据当前步数计算应该在路径的哪个位置（线性插值）
+      const progress = currentStep / totalSteps;
+      const currentIndex = Math.min(Math.floor(progress * totalPoints), totalPoints - 1);
       const currentPoint = path[currentIndex];
       
       if (currentPoint && marker) {
         marker.setPosition(currentPoint);
+        // 调整地图视野，让标记始终在视野内
+        map.setCenter(currentPoint);
       }
       
-      if (currentStep >= steps) {
+      // 确保动画完整播放到最后一个点
+      if (currentStep >= totalSteps || currentIndex >= totalPoints - 1) {
+        // 确保到达终点
+        marker.setPosition(path[totalPoints - 1]);
         clearInterval(animationInterval);
+        
         // 动画结束后清理
         setTimeout(() => {
           if (animationMarkerRef.current) {
