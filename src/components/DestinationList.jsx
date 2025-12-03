@@ -3,6 +3,36 @@ import './DestinationList.css';
 
 function DestinationList({ destinations, onRemove, onPlanRoute, onClearAll, onReorder, hasRoute, routePolicy, onRoutePolicyChange, onPlayAnimation, isAnimating }) {
   const [draggedIndex, setDraggedIndex] = useState(null);
+  
+  // 分享行程
+  const handleShareTrip = () => {
+    if (destinations.length === 0) {
+      alert('请先添加目的地');
+      return;
+    }
+    
+    try {
+      const shareData = {
+        destinations,
+        routePolicy,
+        timestamp: Date.now()
+      };
+      
+      const encoded = btoa(JSON.stringify(shareData));
+      const shareUrl = `${window.location.origin}${window.location.pathname}?share=${encoded}`;
+      
+      // 复制到剪贴板
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        alert('🎉 分享链接已复制到剪贴板！\n\n您可以将链接分享给朋友，\n他们打开后就能看到您的行程！');
+      }).catch(() => {
+        // 备用方案：显示在对话框中
+        prompt('请复制以下链接分享：', shareUrl);
+      });
+    } catch (error) {
+      console.error('生成分享链接失败', error);
+      alert('生成分享链接失败，请稍后再试');
+    }
+  };
   return (
     <div className="destination-list">
       <h3 className="list-title">我的行程</h3>
@@ -94,6 +124,13 @@ function DestinationList({ destinations, onRemove, onPlanRoute, onClearAll, onRe
                 {isAnimating ? '播放中...' : '路线演示'}
               </button>
             )}
+            <button
+              className="share-button"
+              onClick={handleShareTrip}
+              title="生成分享链接"
+            >
+              🔗 分享行程
+            </button>
             <button
               className="clear-all-button"
               onClick={onClearAll}

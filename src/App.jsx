@@ -23,14 +23,36 @@ function App() {
   const saveTimeoutRef = useRef(null);
   const routePathRef = useRef(null); // 保存路线路径
 
-  // 初始化时从 localStorage 恢复数据
+  // 初始化时从 URL 参数或 localStorage 恢复数据
   useEffect(() => {
     try {
-      const savedDestinations = localStorage.getItem('travel_planner_destinations');
-      if (savedDestinations) {
-        const parsed = JSON.parse(savedDestinations);
-        setDestinations(parsed);
-        console.log('已恢复保存的行程', parsed);
+      // 优先检查 URL 参数
+      const urlParams = new URLSearchParams(window.location.search);
+      const sharedData = urlParams.get('share');
+      
+      if (sharedData) {
+        // 从分享链接恢复
+        try {
+          const decoded = atob(sharedData);
+          const parsed = JSON.parse(decoded);
+          setDestinations(parsed.destinations || []);
+          if (parsed.routePolicy) {
+            setRoutePolicy(parsed.routePolicy);
+          }
+          console.log('已从分享链接恢复行程', parsed);
+          // 清除 URL 参数
+          window.history.replaceState({}, '', window.location.pathname);
+        } catch (e) {
+          console.error('解析分享链接失败', e);
+        }
+      } else {
+        // 从 localStorage 恢复
+        const savedDestinations = localStorage.getItem('travel_planner_destinations');
+        if (savedDestinations) {
+          const parsed = JSON.parse(savedDestinations);
+          setDestinations(parsed);
+          console.log('已恢复保存的行程', parsed);
+        }
       }
     } catch (error) {
       console.error('恢复行程失败', error);
