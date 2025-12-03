@@ -3,6 +3,7 @@ import MapContainer from './components/MapContainer';
 import SearchBar from './components/SearchBar';
 import DestinationList from './components/DestinationList';
 import RouteInfo from './components/RouteInfo';
+import RouteSegments from './components/RouteSegments';
 import './App.css';
 
 function App() {
@@ -457,10 +458,12 @@ function App() {
               totalDuration += step.time;
             });
 
+            // 保存详细路线信息，包括分段数据
             setRouteInfo({
               distance: totalDistance,
               duration: totalDuration,
               policy: routePolicy,
+              segments: result.routes[0].steps || [], // 分段信息
             });
 
             // 获取路线路径 - 尝试多种方式
@@ -554,6 +557,7 @@ function App() {
               </div>
             )}
             <RouteInfo routeInfo={routeInfo} />
+            <RouteSegments routeInfo={routeInfo} destinations={destinations} />
           </div>
         </div>
       </div>
