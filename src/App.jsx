@@ -10,7 +10,9 @@ import './App.css';
 
 function App() {
   const [map, setMap] = useState(null);
-  const [destinations, setDestinations] = useState([]);
+  const [destinations, setDestinations] = useState([]); // 当前激活“天”的目的地
+  const [days, setDays] = useState([]); // 多日数据：[{id,name,date,items:Destination[]}]
+  const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [routeInfo, setRouteInfo] = useState(null);
   const [routeNeedsUpdate, setRouteNeedsUpdate] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
@@ -33,40 +35,43 @@ function App() {
   const saveTimeoutRef = useRef(null);
   const routePathRef = useRef(null); // 保存路线路径
 
-  // 初始化时从 URL 参数或 localStorage 恢复数据，并加载历史记录
+  // 初始化：优先解析分享链接；否则读取本地 days 或 destinations；加载历史
   useEffect(() => {
     try {
-      // 优先检查 URL 参数
       const urlParams = new URLSearchParams(window.location.search);
       const sharedData = urlParams.get('share');
-
+      let initialDest = [];
       if (sharedData) {
         try {
           const decoded = decodeURIComponent(atob(sharedData));
           const parsed = JSON.parse(decoded);
-          setDestinations(parsed.destinations || []);
+          initialDest = parsed.destinations || [];
           if (parsed.routePolicy) setRoutePolicy(parsed.routePolicy);
-          console.log('已从分享链接恢复行程', parsed);
           window.history.replaceState({}, '', window.location.pathname);
-        } catch (e) {
-          console.error('解析分享链接失败', e);
-        }
+        } catch (e) { console.error('解析分享链接失败', e); }
       } else {
-        const savedDestinations = localStorage.getItem('travel_planner_destinations');
-        if (savedDestinations) {
-          const parsed = JSON.parse(savedDestinations);
-          setDestinations(parsed);
-          console.log('已恢复保存的行程', parsed);
+        // 读取多日优先
+        const savedDays = localStorage.getItem('travel_planner_days');
+        if (savedDays) {
+          const d = JSON.parse(savedDays);
+          setDays(d);
+          const idx = 0;
+          setActiveDayIndex(idx);
+          setDestinations(d[idx]?.items || []);
+        } else {
+          const savedDestinations = localStorage.getItem('travel_planner_destinations');
+          if (savedDestinations) initialDest = JSON.parse(savedDestinations);
         }
       }
-
-      // 加载历史记录
-      try {
-        const savedHistory = localStorage.getItem('travel_planner_history');
-        if (savedHistory) setHistory(JSON.parse(savedHistory));
-      } catch (e) {
-        console.warn('读取历史记录失败', e);
+      // 如有 initialDest，用 Day 1 包装
+      if (initialDest && initialDest.length >= 0) {
+        const initDays = [{ id: `day_${Date.now()}`, name: 'Day 1', date: '', items: initialDest }];
+        setDays(initDays);
+        setActiveDayIndex(0);
+        setDestinations(initialDest);
       }
+      // 历史
+      try { const savedHistory = localStorage.getItem('travel_planner_history'); if (savedHistory) setHistory(JSON.parse(savedHistory)); } catch {}
     } catch (error) {
       console.error('恢复行程失败', error);
     } finally {
@@ -74,11 +79,14 @@ function App() {
     }
   }, []);
 
-  // 当 destinations 变化时自动保存
+  // 当 destinations 或 days 变化时自动保存
   useEffect(() => {
     if (!isRestoringData) {
       try {
+        // 保存当前天
         localStorage.setItem('travel_planner_destinations', JSON.stringify(destinations));
+        // 保存多日
+        localStorage.setItem('travel_planner_days', JSON.stringify(days));
         console.log('行程已自动保存');
         
         // 显示保存提示
@@ -98,7 +106,7 @@ function App() {
         setSaveStatus('❌ 保存失败');
       }
     }
-  }, [destinations, isRestoringData]);
+  }, [destinations, days, isRestoringData]);
 
   // 地图加载完成后恢复标记
   useEffect(() => {
@@ -190,10 +198,22 @@ function App() {
     console.log('地图已准备好', mapInstance);
   };
 
-  // 添加目的地
+  // 工具：更新当前天 items，并同步 destinations
+  const updateCurrentDayItems = (updater) => {
+    setDays(prev => {
+      const copy = [...prev];
+      const cur = copy[activeDayIndex] || { id:`day_${Date.now()}`, name:'Day 1', date:'', items:[] };
+      const newItems = typeof updater === 'function' ? updater(cur.items || []) : updater;
+      copy[activeDayIndex] = { ...cur, items: newItems };
+      setDestinations(newItems);
+      return copy;
+    });
+  };
+
+  // 添加目的地（当前天）
   const handleAddDestination = (poi) => {
     // 检查是否已存在
-    if (destinations.some(d => d.id === poi.id)) {
+    if ((destinations || []).some(d => d.id === poi.id)) {
       alert('该目的地已在行程中');
       return;
     }
@@ -214,7 +234,7 @@ function App() {
       },
     };
 
-    setDestinations([...destinations, destination]);
+    updateCurrentDayItems((items) => [...items, destination]);
 
     // 在地图上添加标记
     if (map) {
@@ -243,7 +263,7 @@ function App() {
     }
   };
 
-  // 删除目的地
+  // 删除目的地（当前天）
   const handleRemoveDestination = (id) => {
     const index = destinations.findIndex(d => d.id === id);
     if (index === -1) return;
@@ -255,7 +275,7 @@ function App() {
     }
 
     // 从状态中移除
-    setDestinations(destinations.filter(d => d.id !== id));
+    updateCurrentDayItems((items) => items.filter(d => d.id !== id));
 
     // 更新剩余标记的序号
     markersRef.current.forEach((marker, idx) => {
@@ -275,9 +295,9 @@ function App() {
     }
   };
 
-  // 清空所有行程
+  // 清空当前天行程
   const handleClearAll = () => {
-    if (destinations.length === 0) return;
+    if ((destinations || []).length === 0) return;
 
     // 确认操作
     if (!window.confirm('确定要清空所有行程吗？')) {
@@ -296,8 +316,8 @@ function App() {
       routePolylineRef.current = null;
     }
 
-    // 清空状态
-    setDestinations([]);
+    // 从状态中移除
+    updateCurrentDayItems(() => []);
     setRouteInfo(null);
     setRouteNeedsUpdate(false);
     setHasRoute(false);
@@ -651,6 +671,43 @@ function App() {
     });
   };
 
+  // 多日：UI 事件
+  const handleAddDay = () => {
+    const newDay = { id: `day_${Date.now()}`, name: `Day ${days.length + 1}`, date: '', items: [] };
+    const newDays = [...days, newDay];
+    setDays(newDays);
+    setActiveDayIndex(newDays.length - 1);
+    setDestinations([]);
+    // 清理地图标记
+    if (map && markersRef.current.length > 0) { map.remove(markersRef.current); markersRef.current = []; }
+  };
+  const handleRenameDay = (index) => {
+    const cur = days[index];
+    const name = window.prompt('重命名', cur?.name || `Day ${index+1}`);
+    if (!name) return;
+    const copy = [...days];
+    copy[index] = { ...cur, name };
+    setDays(copy);
+  };
+  const handleRemoveDay = (index) => {
+    if (days.length <= 1) { alert('至少保留一天'); return; }
+    if (!window.confirm('确定删除该天的行程吗？')) return;
+    const copy = days.filter((_,i)=>i!==index);
+    setDays(copy);
+    const newIdx = Math.max(0, index-1);
+    setActiveDayIndex(newIdx);
+    setDestinations(copy[newIdx]?.items || []);
+    if (map && markersRef.current.length > 0) { map.remove(markersRef.current); markersRef.current = []; }
+  };
+  const handleSwitchDay = (index) => {
+    setActiveDayIndex(index);
+    setDestinations(days[index]?.items || []);
+    // 清理并根据新天 items 由 useEffect 恢复标记
+    if (map && markersRef.current.length > 0) { map.remove(markersRef.current); markersRef.current = []; }
+    setRouteInfo(null);
+    setHasRoute(false);
+  };
+
   return (
     <div className="app">
       <div className="sidebar">
@@ -703,6 +760,22 @@ function App() {
         <div className="sidebar-content">
           {activeTab === 'itinerary' ? (
             <div className="tab-content">
+              {/* 多日日签 */}
+              <div className="days-bar" style={{display:'flex', gap:8, flexWrap:'wrap', alignItems:'center', marginBottom:10}}>
+                {days.map((d, idx) => (
+                  <button key={d.id} onClick={()=>handleSwitchDay(idx)} className={idx===activeDayIndex?'active':''} style={{padding:'6px 10px', borderRadius:16, border: idx===activeDayIndex?'1px solid #1677ff':'1px solid #d9d9d9', background: idx===activeDayIndex?'#e6f4ff':'#fff', color:'#333'}}>
+                    {d.name || `Day ${idx+1}`}
+                  </button>
+                ))}
+                <button onClick={handleAddDay} title="添加一天" style={{padding:'6px 10px', borderRadius:16, border:'1px dashed #d9d9d9', background:'#fff'}}>+ 添加一天</button>
+                {days[activeDayIndex] && (
+                  <>
+                    <button onClick={()=>handleRenameDay(activeDayIndex)} style={{padding:'6px 10px', borderRadius:6, border:'1px solid #d9d9d9', background:'#fff'}}>重命名</button>
+                    <button onClick={()=>handleRemoveDay(activeDayIndex)} style={{padding:'6px 10px', borderRadius:6, border:'1px solid #ffccc7', background:'#fff', color:'#ff4d4f'}}>删除当天</button>
+                  </>
+                )}
+              </div>
+
               <DestinationList 
                 destinations={destinations}
                 onRemove={handleRemoveDestination}
